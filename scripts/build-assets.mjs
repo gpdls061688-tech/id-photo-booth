@@ -30,4 +30,11 @@ const crop = (x, y, w, h, out) =>
 await crop(0, 0, 190, 96, 'header.webp');          // 글자 없는 파란 헤더 띠
 await crop(798, 670, 180, 180, 'btn-decide.webp'); // 결정 버튼 (촬영 버튼의 테두리로 재사용)
 
+// 링크 미리보기(OG) 썸네일 1200×630: 부스 그림(기계 + 写真撮影 버튼)을 흰 바탕 가운데에
+const og = await sharp('design/12.jpg').extract({ left: 0, top: 110, width: 572, height: 785 })
+  .resize({ height: 600 }).toBuffer();
+await sharp({ create: { width: 1200, height: 630, channels: 3, background: '#ffffff' } })
+  .composite([{ input: og, gravity: 'center' }])
+  .jpeg({ quality: 88 }).toFile('public/og.jpg');
+
 console.log('art ready');
