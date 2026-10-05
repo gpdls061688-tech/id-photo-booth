@@ -1,0 +1,27 @@
+{
+  "name": "id-photo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "runtime": "node scripts/prepare-runtime.mjs",
+    "predev": "npm run runtime",
+    "dev": "vite",
+    "predev:mobile": "npm run runtime",
+    "dev:mobile": "vite --mode mobile",
+    "prebuild": "npm run runtime",
+    "build": "vite build",
+    "preview": "vite preview",
+    "assets": "node scripts/build-assets.mjs"
+  },
+  "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
+    "@mediapipe/tasks-vision": "^1.0.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "puppeteer-core": "^25.12.0",
+    "sharp": "^0.35.5",
+    "vite": "^7.0.0"
+  }
+}

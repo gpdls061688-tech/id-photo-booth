@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>証明写真 Ki-Re-i</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <main id="stage" class="stage">
+
+    <!-- 1. 부스 외관 -->
+    <section class="screen active" data-screen="booth">
+      <img class="art" src="art/booth.webp" alt="증명사진 부스" />
+      <button class="hot" data-go="service" style="--l:42;--t:19.8;--w:23.2;--h:47" aria-label="부스 안으로 들어가기"></button>
+      <button class="hot pulse" data-go="service" style="--l:36.3;--t:71.9;--w:27.5;--h:15.7" aria-label="写真撮影 사진 촬영 시작"></button>
+      <p class="caption" style="--t:89.5">버튼을 눌러 촬영을 시작하세요</p>
+      <p id="inAppNotice" class="inapp-notice" hidden>
+        앱 안에서 열면 카메라가 안 될 수 있어요.<br />오른쪽 위 <b>⋯</b> → <b>Safari/브라우저로 열기</b>를 눌러 주세요.
+      </p>
+    </section>
+
+    <!-- 2. 서비스 선택 -->
+    <section class="screen" data-screen="service">
+      <img class="art" src="art/service.webp" alt="서비스 선택 화면" />
+      <button class="hot pulse" data-go="types" style="--l:21;--t:32.5;--w:31.5;--h:25" aria-label="証明写真 증명사진"></button>
+      <p class="caption" style="--t:84">証明写真을 눌러 주세요</p>
+    </section>
+
+    <!-- 3. 규격 선택 -->
+    <section class="screen" data-screen="types">
+      <img class="art" src="art/types.webp" alt="사진 종류 선택 화면" />
+      <button class="hot" data-type="resume"   style="--l:21.3;--t:35.8;--w:25;--h:14.1" aria-label="이력서·기타 3×4cm"></button>
+      <button class="hot" data-type="license"  style="--l:53.8;--t:35.8;--w:25;--h:14.1" aria-label="운전면허·중형"></button>
+      <button class="hot" data-type="passport" style="--l:21.3;--t:50.7;--w:25;--h:14"   aria-label="여권·재류카드 3.5×4.5cm"></button>
+      <button class="hot" data-type="large"    style="--l:53.9;--t:50.7;--w:25;--h:14"   aria-label="대형 5×7cm"></button>
+      <p class="caption" style="--t:81">원하는 사진 종류를 골라 주세요</p>
+    </section>
+
+    <!-- 4. 촬영 -->
+    <section class="screen machine" data-screen="camera">
+      <div class="zoom">
+        <img class="art" src="art/machine.webp" alt="" />
+        <div class="monitor">
+          <div class="m cam-header" style="--x:0;--y:0;--w:1000;--h:96">
+            <span id="shotCount" class="shot-count">1/2</span>
+            <span id="camTitle">カメラを見てください。</span>
+          </div>
+          <div class="m cam-body" style="--x:0;--y:96;--w:1000;--h:777">
+            <video id="video" autoplay playsinline muted></video>
+            <div id="specFrame" class="spec-frame">
+              <svg id="guideSvg" class="guide" aria-hidden="true"></svg>
+            </div>
+            <p class="cam-hint">얼굴을 타원에 맞춰 주세요 · 크기와 위치는 자동으로 맞춰져요</p>
+            <div id="countdown" class="countdown" hidden></div>
+            <div id="flash" class="flash"></div>
+            <!-- 촬영 후 처리 중: 진행 막대는 CSS 애니메이션이라 계산 중에도 끊기지 않는다 -->
+            <div id="camProcessing" class="cam-processing" hidden>
+              <div class="proc-card">
+                <p class="proc-title">写真を処理しています</p>
+                <p id="procMsg" class="proc-msg">사진을 만드는 중…</p>
+                <div class="proc-bar"><i></i></div>
+              </div>
+            </div>
+            <div id="camOverlay" class="cam-overlay" hidden>
+              <p id="camOverlayMsg"></p>
+              <button id="btnCamRetry" class="pill" hidden>카메라 다시 켜기</button>
+            </div>
+          </div>
+          <button id="btnBackTypes" class="m round-btn purple" style="--x:28;--y:695;--w:150;--h:150">규격<br />변경</button>
+          <button id="btnShutter" class="m shutter" style="--x:798;--y:670;--w:180;--h:180" disabled>
+            <span class="shutter-face">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 4 7.2 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.2L15 4H9Zm3 4.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg>
+              촬영
+            </span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 사진 선택 (그림 위에 실제 사진을 얹는다) -->
+    <section class="screen machine" data-screen="select">
+      <div class="zoom">
+        <img class="art" src="art/machine.webp" alt="" />
+        <div class="monitor">
+          <div id="timer" class="m timer" style="--x:885;--y:8;--w:102;--h:80">60</div>
+          <ul id="warnings" class="m warnings" style="--x:14;--y:112;--w:305;--h:295"></ul>
+          <button class="m slot" data-slot="0" style="--x:330;--y:116;--w:185;--h:292">
+            <span class="slot-label">1番目</span><span class="slot-frame"><img alt="1번째 사진" /></span><span class="slot-tag">선택</span>
+          </button>
+          <button class="m slot" data-slot="1" style="--x:516;--y:116;--w:185;--h:292">
+            <span class="slot-label">2番目</span><span class="slot-frame"><img alt="2번째 사진" /></span><span class="slot-tag">선택</span>
+          </button>
+          <div class="m preview" style="--x:352;--y:404;--w:330;--h:434"><img id="previewImg" alt="미리보기" /></div>
+          <div class="m preview-label" style="--x:420;--y:838;--w:194;--h:34">미리보기</div>
+          <div id="retakeCount" class="m retake-count" style="--x:80;--y:538;--w:38;--h:56">1</div>
+          <div id="retakeOff" class="m retake-off" style="--x:18;--y:412;--w:172;--h:442" hidden></div>
+          <button id="btnRetake" class="m hot-round" style="--x:28;--y:695;--w:150;--h:150" aria-label="다시 촬영"></button>
+          <button id="btnDecide" class="m hot-round" style="--x:803;--y:675;--w:170;--h:170" aria-label="결정"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 인쇄 중 -->
+    <section class="screen" data-screen="printing">
+      <div class="square">
+        <img class="art" src="art/printing.webp" alt="사진 배출구" />
+        <div class="lamp"></div>
+      </div>
+      <p class="caption big" style="--t:84">写真を印刷しています…<br /><small>잠시만 기다려 주세요</small></p>
+    </section>
+
+    <!-- 7. 受取口 -->
+    <section class="screen" data-screen="tray">
+      <img class="art" src="art/tray.webp" alt="사진 받는 곳" />
+      <div class="tray-slot"><img id="traySheet" alt="인화된 사진" /></div>
+      <button class="hot pulse" data-go="result" style="--l:18;--t:38;--w:77;--h:24" aria-label="사진 받기"></button>
+      <p class="caption big" style="--t:68">受取口에서 사진을 받아 가세요<br /><small>터치하면 저장 화면으로 이동해요</small></p>
+    </section>
+
+    <!-- 8. 결과 (그림 속 인화지·번호 자리에 실제 내용을 얹는다) -->
+    <section class="screen" data-screen="result">
+      <img class="art" src="art/result.webp" alt="사진 완성 화면" />
+      <div class="pos r-no" style="--l:2.6;--t:2.36;--w:17.5;--h:4.8">
+        <span id="resultNo">No. 000000</span><span id="resultDate"></span>
+      </div>
+      <div class="pos r-board" style="--l:3.125;--t:18.6;--w:94.86;--h:40.7">
+        <img id="resultSheet" alt="인화지" />
+      </div>
+      <button id="btnSaveSheet" class="hot" style="--l:4;--t:63.3;--w:92.7;--h:8.2" aria-label="インデックス保存 인화지 저장"></button>
+      <button id="btnSavePhoto" class="hot" style="--l:4;--t:72.8;--w:92.7;--h:8.2" aria-label="写真1枚を保存 사진 1매 저장"></button>
+      <button id="btnRestart" class="hot" style="--l:4.4;--t:82.5;--w:92.3;--h:8.2" aria-label="最初に戻る 처음으로"></button>
+    </section>
+
+    <button id="btnHome" class="home" hidden>처음으로</button>
+
+    <!-- 지원하지 않는 기기 안내 -->
+    <div id="notice" class="notice" hidden>
+      <div class="notice-card">
+        <p class="notice-title">ご利用いただけません</p>
+        <p id="noticeMsg" class="notice-msg"></p>
+        <button id="btnNoticeClose" class="pill">확인</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

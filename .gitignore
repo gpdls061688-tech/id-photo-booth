@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vite/
+
+# 원본 그림은 저장소에 올리지 않는다 (웹용 변환본 public/art 만 포함)
+design/
+
+# 빌드 때 자동으로 준비되는 파일 (scripts/prepare-runtime.mjs)
+public/mediapipe/
+
+*.log
+.DS_Store
+Thumbs.db
