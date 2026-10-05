@@ -21,6 +21,78 @@ function readAlpha(bitmap, x, y, w, h, scale = 1) {
   return { data: ctx.getImageData(0, 0, cw, ch).data, w: cw, h: ch };
 }
 
+const smoothstep = (a, b, v) => {
+  const t = clamp((v - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * 배경 제거 결과(cutout)의 빈틈을 사람 영역 마스크로 메운다.
+ * 머리·머리카락(턱 위)은 섬세한 배경 제거 결과를 그대로 쓰고,
+ * 턱 아래(목·어깨·옷)는 둘 중 하나라도 사람이라고 하면 남긴다 → 옷 색이 배경과 비슷해도 지워지지 않음.
+ * 색은 원본 프레임 그대로 쓴다. 반환: 합쳐진 cutout ImageBitmap
+ */
+export async function mergePersonMask(frame, cutout, person, face) {
+  const W = frame.width;
+  const H = frame.height;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(cutout, 0, 0, W, H);
+  const alpha = ctx.getImageData(0, 0, W, H).data;
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(frame, 0, 0);
+  const img = ctx.getImageData(0, 0, W, H);
+  const d = img.data;
+
+  const { data: m, width: mw, height: mh } = person;
+  const sx = mw / W;
+  const sy = mh / H;
+
+  // 보강 높이: 입 아래쯤부터 서서히 시작해 턱에서는 완전히 적용 (목이 비지 않도록)
+  let y0;
+  let y1;
+  if (face) {
+    const L = face.chin.y - face.forehead.y;
+    y0 = face.chin.y - 0.3 * L;
+    y1 = face.chin.y - 0.05 * L;
+  } else {
+    // 얼굴을 못 찾으면 사람 영역 위에서 35% 아래부터
+    let top = mh;
+    let bottom = 0;
+    for (let y = 0; y < mh; y++) {
+      for (let x = 0; x < mw; x += 4) {
+        if (m[y * mw + x] > 0.5) {
+          if (y < top) top = y;
+          bottom = y;
+        }
+      }
+    }
+    const t = top / sy;
+    const h = (bottom - top) / sy;
+    y0 = t + 0.3 * h;
+    y1 = t + 0.4 * h;
+  }
+
+  for (let y = 0; y < H; y++) {
+    const wy = smoothstep(y0, y1, y);
+    const my = Math.min(mh - 1, Math.floor(y * sy)) * mw;
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      let a = alpha[i + 3];
+      if (wy > 0) {
+        // 경계를 살짝 안쪽으로(0.45~0.8) 잡아 배경이 테두리로 묻어나지 않게
+        const p = smoothstep(0.45, 0.8, m[my + Math.min(mw - 1, Math.floor(x * sx))]) * 255 * wy;
+        if (p > a) a = p;
+      }
+      d[i + 3] = a;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return createImageBitmap(c);
+}
+
 /** 사람 영역(불투명 픽셀) 전체의 경계 상자. 얼굴을 못 찾았을 때만 사용 */
 function alphaBBox(bitmap) {
   const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));

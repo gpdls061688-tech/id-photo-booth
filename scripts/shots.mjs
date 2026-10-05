@@ -1,5 +1,5 @@
-// 개발 서버 화면을 Edge로 열어 캡처한다 (레이아웃 확인용)
-// 사용: node scripts/shots.mjs <출력폴더> [이름...]
+﻿// 媛쒕컻 ?쒕쾭 ?붾㈃??Edge濡??댁뼱 罹≪쿂?쒕떎 (?덉씠?꾩썐 ?뺤씤??
+// ?ъ슜: node scripts/shots.mjs <異쒕젰?대뜑> [?대쫫...]
 import puppeteer from 'puppeteer-core';
 import { mkdir } from 'node:fs/promises';
 
@@ -19,6 +19,8 @@ const pages = [
   { name: 'select', q: '?screen=select&type=passport', vp: phone, wait: active('select') },
   { name: 'tray', q: '?screen=tray&type=resume', vp: phone, wait: active('tray'), delay: 1800 },
   { name: 'result', q: '?screen=result&type=license', vp: phone, wait: active('result'), delay: 500 },
+  { name: 'segtest', q: '?screen=segtest', vp: { width: 1000, height: 620 }, wait: '#done' },
+  { name: 'mergetest', q: '?screen=mergetest', vp: { width: 1000, height: 620 }, wait: '#done' },
   { name: 'retro', q: '?screen=retro', vp: { width: 1600, height: 1000 }, wait: '#done' },
   ...['resume', 'license', 'passport', 'large'].map((t) => ({ name: `sheet-${t}`, q: `?screen=sheet&type=${t}`, vp: sheet, wait: 'body > canvas' })),
 ];
@@ -44,7 +46,7 @@ for (const p of pages) {
       await new Promise((r) => setTimeout(r, p.after || 0));
     }
     await page.screenshot({ path: `${out}/${p.name}.png` });
-    console.log(`${p.name} ok`);
+    console.log(`${p.name} ok ${await page.title()}`);
   } catch (err) {
     console.log(`${p.name} FAIL ${err.message}`);
   }

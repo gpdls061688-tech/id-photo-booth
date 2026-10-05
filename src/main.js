@@ -1,8 +1,8 @@
 import { preload, removeBackground } from '@imgly/background-removal';
 import { startCamera, stopCamera, shouldMirror } from './camera.js';
 import { captureFullFrame } from './capture.js';
-import { initFace, detectFace } from './face.js';
-import { measureHead, renderPhoto, shotWarnings } from './align.js';
+import { initFace, detectFace, initSegmenter, segmentPerson } from './face.js';
+import { measureHead, mergePersonMask, renderPhoto, shotWarnings } from './align.js';
 import { renderSheet } from './sheet.js';
 import { canvasToBlob, pngWithDpi, download } from './png.js';
 import { printTexture } from './retro.js';
@@ -50,6 +50,7 @@ function warmUp() {
   warmed = true;
   preload(BG_REMOVAL_CONFIG).catch((err) => console.warn('배경 제거 모델 사전 로딩 실패', err));
   initFace().catch((err) => console.warn('얼굴 인식 모델 사전 로딩 실패', err));
+  initSegmenter().catch((err) => console.warn('사람 영역 모델 사전 로딩 실패', err));
 }
 
 document.querySelectorAll('[data-go]').forEach((btn) => {
@@ -265,11 +266,15 @@ async function shoot() {
   }
 }
 
-/** 촬영 프레임 → 배경 제거 + 얼굴 측정 → 규격별 사진 */
+/** 촬영 프레임 → 배경 제거(+ 사람 영역으로 옷 보강) + 얼굴 측정 → 규격별 사진 */
 async function buildShot(frame, onProgress) {
   const originalBlob = await canvasToBlob(frame);
   const facePromise = detectFace(frame).catch((err) => {
     console.warn('얼굴 인식 실패', err);
+    return null;
+  });
+  const personPromise = segmentPerson(frame).catch((err) => {
+    console.warn('사람 영역 인식 실패', err);
     return null;
   });
   const cutoutBlob = await removeBackground(originalBlob, {
@@ -286,7 +291,13 @@ async function buildShot(frame, onProgress) {
   onProgress('얼굴 위치를 규격에 맞추는 중…');
   await nextPaint();
   const face = await facePromise;
-  const cutout = await createImageBitmap(cutoutBlob);
+  const person = await personPromise;
+  let cutout = await createImageBitmap(cutoutBlob);
+  if (person) {
+    const merged = await mergePersonMask(frame, cutout, person, face);
+    cutout.close();
+    cutout = merged;
+  }
   try {
     const geo = measureHead(cutout, face);
     const guideKey = TYPES[state.type].guide;

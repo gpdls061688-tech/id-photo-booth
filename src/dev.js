@@ -83,6 +83,82 @@ export async function devJump(params, app) {
     document.body.append(Object.assign(document.createElement('div'), { id: 'done' }));
     return;
   }
+  if (screen === 'mergetest') {
+    // 옷 보강 확인: 배경 제거가 셔츠를 지운 상황을 흉내 낸 뒤 사람 영역으로 메워지는지 본다
+    const { segmentPerson, detectFace } = await import('./face.js');
+    const { mergePersonMask } = await import('./align.js');
+    const img = new Image();
+    img.src = '/design/11.png';
+    await img.decode();
+    const frame = document.createElement('canvas');
+    frame.width = 498;
+    frame.height = 578;
+    frame.getContext('2d').drawImage(img, 114, 571, 498, 578, 0, 0, 498, 578);
+    const person = await segmentPerson(frame);
+    const face = await detectFace(frame).catch(() => null);
+    // 가짜 배경 제거 결과: 사람 영역 중 위쪽 60%만 남기고 셔츠는 지움
+    const broken = document.createElement('canvas');
+    broken.width = 498;
+    broken.height = 578;
+    const bctx = broken.getContext('2d');
+    bctx.drawImage(frame, 0, 0);
+    const bd = bctx.getImageData(0, 0, 498, 578);
+    for (let y = 0; y < 578; y++) for (let x = 0; x < 498; x++) {
+      const i = y * 498 + x;
+      bd.data[i * 4 + 3] = y < 578 * 0.62 && person.data[i] > 0.5 ? 255 : 0;
+    }
+    bctx.putImageData(bd, 0, 0);
+    const brokenBmp = await createImageBitmap(broken);
+    const fixed = await mergePersonMask(frame, brokenBmp, person, face);
+    const show = (bmp) => {
+      const c = document.createElement('canvas');
+      c.width = 498;
+      c.height = 578;
+      const x = c.getContext('2d');
+      x.fillStyle = '#58b4d3';
+      x.fillRect(0, 0, 498, 578);
+      x.drawImage(bmp, 0, 0);
+      c.style.cssText = 'width:480px;margin-right:8px;display:inline-block';
+      return c;
+    };
+    document.title = `MERGE face=${face ? 'found' : 'none'}`;
+    document.body.innerHTML = '';
+    document.body.style.cssText = 'display:block;white-space:nowrap';
+    document.body.append(show(brokenBmp), show(fixed), Object.assign(document.createElement('div'), { id: 'done' }));
+    return;
+  }
+  if (screen === 'segtest') {
+    // 사람 영역 모델 확인: 디자인 그림 속 인물(파란 배경 + 줄무늬 셔츠)에서 마스크를 시각화
+    const { segmentPerson } = await import('./face.js');
+    const img = new Image();
+    img.src = '/design/11.png';
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = 498;
+    c.height = 578;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 114, 571, 498, 578, 0, 0, 498, 578);
+    const m = await segmentPerson(c);
+    const at = (fx, fy) => m.data[Math.floor(fy * m.height) * m.width + Math.floor(fx * m.width)].toFixed(2);
+    document.title = `SEG masks=${m.count} size=${m.width}x${m.height} face=${at(0.5, 0.45)} shirt=${at(0.5, 0.9)} bgCorner=${at(0.05, 0.1)}`;
+    const v = document.createElement('canvas');
+    v.width = m.width;
+    v.height = m.height;
+    const id = v.getContext('2d').createImageData(m.width, m.height);
+    for (let i = 0; i < m.data.length; i++) {
+      const g = Math.round(m.data[i] * 255);
+      id.data.set([g, g, g, 255], i * 4);
+    }
+    v.getContext('2d').putImageData(id, 0, 0);
+    document.body.innerHTML = '';
+    document.body.style.cssText = 'display:block;white-space:nowrap';
+    for (const el of [c, v]) {
+      el.style.cssText = 'width:480px;margin-right:8px;display:inline-block';
+      document.body.append(el);
+    }
+    document.body.append(Object.assign(document.createElement('div'), { id: 'done' }));
+    return;
+  }
   if (screen === 'facetest') {
     // 얼굴 인식 모델 로딩 확인 (얼굴 없는 이미지 → null 이 정상)
     const { detectFace } = await import('./face.js');

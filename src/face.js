@@ -1,14 +1,57 @@
-// MediaPipe Face Landmarker로 얼굴 위치만 측정한다. (얼굴 픽셀은 절대 변경하지 않음)
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+// MediaPipe: 얼굴 위치 측정 + 사람(몸·옷) 영역 인식. 얼굴 픽셀은 절대 변경하지 않는다.
+import { FaceLandmarker, FilesetResolver, ImageSegmenter } from '@mediapipe/tasks-vision';
 
+const base = import.meta.env.BASE_URL;
+let filesetPromise = null;
 let landmarkerPromise = null;
+let segmenterPromise = null;
+
+function fileset() {
+  if (!filesetPromise) {
+    filesetPromise = FilesetResolver.forVisionTasks(`${base}mediapipe/wasm`).catch((err) => {
+      filesetPromise = null;
+      throw err;
+    });
+  }
+  return filesetPromise;
+}
+
+export function initSegmenter() {
+  if (!segmenterPromise) {
+    segmenterPromise = (async () => ImageSegmenter.createFromOptions(await fileset(), {
+      baseOptions: { modelAssetPath: `${base}mediapipe/selfie_segmenter.tflite`, delegate: 'CPU' },
+      runningMode: 'IMAGE',
+      outputConfidenceMasks: true,
+      outputCategoryMask: false,
+    }))().catch((err) => {
+      segmenterPromise = null;
+      throw err;
+    });
+  }
+  return segmenterPromise;
+}
+
+/**
+ * 사람일 확률 마스크 (0~1). 화상회의 배경 흐림용 모델이라 옷 색과 상관없이 몸통을 사람으로 본다.
+ * 반환: { data: Float32Array, width, height }
+ */
+export async function segmentPerson(source) {
+  const segmenter = await initSegmenter();
+  const result = segmenter.segment(source);
+  const masks = result.confidenceMasks || [];
+  // selfie_segmenter는 마스크가 1장(사람 확률). 여러 장이면 0번이 배경이므로 뒤집는다
+  const mask = masks[0];
+  const raw = mask.getAsFloat32Array();
+  const data = masks.length > 1 ? raw.map((v) => 1 - v) : Float32Array.from(raw);
+  const out = { data, width: mask.width, height: mask.height, count: masks.length };
+  masks.forEach((m) => m.close());
+  return out;
+}
 
 export function initFace() {
   if (!landmarkerPromise) {
     landmarkerPromise = (async () => {
-      const base = import.meta.env.BASE_URL;
-      const fileset = await FilesetResolver.forVisionTasks(`${base}mediapipe/wasm`);
-      return FaceLandmarker.createFromOptions(fileset, {
+      return FaceLandmarker.createFromOptions(await fileset(), {
         baseOptions: { modelAssetPath: `${base}mediapipe/face_landmarker.task`, delegate: 'CPU' },
         runningMode: 'IMAGE',
         numFaces: 3,

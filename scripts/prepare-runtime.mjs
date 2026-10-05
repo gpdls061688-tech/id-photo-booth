@@ -10,15 +10,21 @@ for (const f of await readdir(WASM_SRC)) {
   if (!f.includes('_module_')) await copyFile(`${WASM_SRC}/${f}`, `${WASM_DST}/${f}`);
 }
 
-// 얼굴 랜드마크 모델 (위치 측정용, 얼굴을 변형하지 않음)
-const MODEL = 'public/mediapipe/face_landmarker.task';
-try {
-  await access(MODEL);
-} catch {
-  const url = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`모델 다운로드 실패: ${res.status}`);
-  await writeFile(MODEL, Buffer.from(await res.arrayBuffer()));
+async function download(path, url) {
+  try {
+    await access(path);
+  } catch {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`모델 다운로드 실패 (${path}): ${res.status}`);
+    await writeFile(path, Buffer.from(await res.arrayBuffer()));
+  }
 }
+
+// 얼굴 랜드마크 모델 (위치 측정용, 얼굴을 변형하지 않음)
+await download('public/mediapipe/face_landmarker.task',
+  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task');
+// 사람(몸·옷) 영역 모델 — 배경 제거가 옷을 지우지 않도록 보조
+await download('public/mediapipe/selfie_segmenter.tflite',
+  'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite');
 
 console.log('runtime assets ready');
